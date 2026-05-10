@@ -3,59 +3,93 @@ import pandas as pd
 from catboost import CatBoostClassifier
 from openai import OpenAI
 
-# 1. 页面设置
-st.set_page_config(page_title="骨折风险智能预测系统", layout="wide")
-st.title("🏥 骨折风险多模态 AI 辅助决策系统")
-st.markdown("本系统融合 CatBoost 传统机器学习高精度算力与 ChatGPT 临床语义解析能力。")
+# 1. Page Configuration (Minimalist Academic Style)
+st.set_page_config(page_title="Fracture Risk CDSS", layout="wide", initial_sidebar_state="expanded")
 
-# 2. 侧边栏：输入患者指标
-st.sidebar.header("输入患者检验指标")
-age = st.sidebar.slider("年龄 (Age)", 60, 100, 75)
-rbc = st.sidebar.slider("红细胞计数 (RBC)", 2.0, 6.0, 3.5)
-hb = st.sidebar.slider("血红蛋白 (Hb)", 6.0, 16.0, 10.5)
-glu = st.sidebar.slider("空腹血糖 (GLU)", 70.0, 250.0, 130.0)
+# Custom CSS for a cleaner, academic look
+st.markdown("""
+    <style>
+    .main {background-color: #f8f9fa;}
+    .stButton>button {background-color: #2c3e50; color: white; border-radius: 4px;}
+    h1, h2, h3 {color: #2c3e50; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;}
+    .report-box {padding: 20px; background-color: #ffffff; border-left: 5px solid #34495e; box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
+    </style>
+    """, unsafe_allow_html=True)
 
-# 3. 加载模型与API
+st.title("Multimodal AI Clinical Decision Support System")
+st.markdown("**Objective:** Pathological Fracture Risk Stratification in Hospitalized Osteoporosis Patients.")
+st.markdown("---")
+
+# 2. Sidebar: Clinical Parameters Input
+st.sidebar.header("Clinical Parameters")
+st.sidebar.markdown("Please input patient laboratory data:")
+
+age = st.sidebar.slider("Age (years)", 60, 100, 75)
+rbc = st.sidebar.slider("RBC (x10¹²/L)", 2.0, 6.0, 3.5, step=0.1)
+hb = st.sidebar.slider("Hemoglobin (g/dL)", 6.0, 16.0, 10.5, step=0.1)
+glu = st.sidebar.slider("Fasting Glucose (mg/dL)", 70.0, 250.0, 130.0, step=1.0)
+
+# 3. Load ML Model and API
 @st.cache_resource
 def load_model():
     model = CatBoostClassifier()
-    model.load_model('catboost_fracture_model.cbm')
+    # Ensure your .cbm file is in the same directory
+    model.load_model('catboost_fracture_model.cbm') 
     return model
 
 model = load_model()
-# 获取存放在 Streamlit 后台的安全密钥
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"]) 
 
-if st.button("🚀 开始智能评估"):
-    with st.spinner("AI 正在计算风险并生成报告..."):
+# 4. Assessment Execution
+if st.sidebar.button("Run AI Assessment"):
+    with st.spinner("Executing risk stratification and generating clinical interpretation..."):
         
-        # --- 模块 A: CatBoost 精准计算 ---
+        # --- Module A: CatBoost Machine Learning Engine ---
         input_data = [age, rbc, hb, glu]
-        # 假设预测正类(1)的概率在索引 1
         risk_prob = model.predict_proba(input_data)[1] * 100 
         
-        st.subheader("📊 CatBoost 精准预测引擎")
-        if risk_prob > 50:
-            st.error(f"高危预警：骨折发生概率 {risk_prob:.1f}%")
-        else:
-            st.success(f"低危状态：骨折发生概率 {risk_prob:.1f}%")
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.subheader("I. ML Risk Stratification")
+            st.markdown("**(CatBoost Algorithm)**")
+            
+            # Use academic metric display instead of colorful success/error boxes
+            st.metric(label="Predicted Fracture Probability", value=f"{risk_prob:.2f}%")
+            
+            if risk_prob > 50:
+                st.warning("Status: High Risk Profile")
+            else:
+                st.info("Status: Low/Moderate Risk Profile")
 
-        # --- 模块 B: LLM 智能解读 ---
-        st.subheader("🤖 大模型智能临床解读")
-        
-        # 构建给微调大模型的 Prompt
-        prompt = f"""
-        患者年龄 {age} 岁，RBC {rbc}，Hb {hb}，血糖 {glu}。
-        CatBoost计算出的客观骨折风险概率为 {risk_prob:.1f}%。
-        请结合上述指标，给出一份简短、专业的临床风险解读，并给出防跌倒或干预建议。
-        """
-        
-        response = client.chat.completions.create(
-            model="ft:gpt-4o-mini-2024-07-18:niu:bone-model:DaephI7x", # 换成你微调后模型的专属 ID！
-            messages=[
-                {"role": "system", "content": "你是一位资深的急诊骨科主任医师。"},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        st.write(response.choices[0].message.content)
+        # --- Module B: LLM Clinical Interpretation ---
+        with col2:
+            st.subheader("II. LLM Clinical Interpretation")
+            st.markdown("**(Fine-tuned Generative Model)**")
+            
+            # Highly formal English medical prompt
+            prompt = f"""
+            Patient Profile: 
+            - Age: {age} years
+            - Red Blood Cell Count (RBC): {rbc} x10^12/L
+            - Hemoglobin (Hb): {hb} g/dL
+            - Fasting Blood Glucose (GLU): {glu} mg/dL
+            
+            The CatBoost machine learning algorithm has computed a pathological fracture risk probability of {risk_prob:.2f}%.
+            
+            Task: Provide a concise, evidence-based clinical interpretation of this risk. Analyze the potential synergistic effects of the patient's anemia (if present) and glycemic status on fall risk and skeletal vulnerability. Conclude with actionable clinical recommendations (e.g., DXA scanning, fall prevention strategies). Use formal, academic medical terminology.
+            """
+            
+            response = client.chat.completions.create(
+                model="ft:gpt-4o-mini-2024-07-18:niu:bone-model:DaephI7x", # 别忘了换成你自己的微调模型 ID
+                messages=[
+                    {"role": "system", "content": "You are a senior attending physician specializing in emergency medicine and geriatrics, providing expert clinical decision support."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            # Display report in a clean, academic box
+            st.markdown(f'<div class="report-box">{response.choices[0].message.content}</div>', unsafe_allow_html=True)
+            
+else:
+    st.info("Awaiting input. Please adjust parameters in the sidebar and click 'Run AI Assessment'.")

@@ -51,7 +51,7 @@ if st.button("🚀 开始智能评估"):
         """
         
         response = client.chat.completions.create(
-            model="ft:gpt-4o-xxxxxx", # 换成你微调后模型的专属 ID！
+            model="ft:gpt-4o-mini-2024-07-18:niu:bone-model:DaephI7x", # 换成你微调后模型的专属 ID！
             messages=[
                 {"role": "system", "content": "你是一位资深的急诊骨科主任医师。"},
                 {"role": "user", "content": prompt}
